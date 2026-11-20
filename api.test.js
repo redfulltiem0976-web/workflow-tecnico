@@ -1,0 +1,21 @@
+const {test,after}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'portfolio-test-'));
+process.env.DB_PATH=path.join(dir,'test.sqlite');
+const {server,db}=require('../server');
+let base='';
+const start=()=>new Promise(resolve=>server.listen(0,'127.0.0.1',()=>{base=`http://127.0.0.1:${server.address().port}`;resolve();}));
+const request=async(p,method='GET',body)=>{const r=await fetch(base+p,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};};
+after(async()=>{await new Promise(resolve=>server.close(resolve));db.close();fs.rmSync(dir,{recursive:true,force:true});});
+test('Órdenes: consultar, crear, validar y actualizar estado',async()=>{
+ await start();
+ assert.equal((await request('/api/health')).data.ok,true);
+ const initial=await request('/api/orders');assert.ok(initial.data.length>=4);
+ const bad=await request('/api/orders','POST',{title:'x'});assert.equal(bad.status,400);
+ const good=await request('/api/orders','POST',{title:'Calibrar sensor de prueba',asset_id:1,priority:'alta',assignee:'Demo Test',due_date:'2026-12-08',description:'Control'});assert.equal(good.status,201);
+ const id=good.data.id;
+ const moved=await request('/api/orders/'+id,'PATCH',{status:'en_proceso'});assert.equal(moved.status,200);
+ const found=(await request('/api/orders')).data.find(o=>o.id===id);assert.equal(found.status,'en_proceso');
+ const invalid=await request('/api/orders/'+id,'PATCH',{status:'inventado'});assert.equal(invalid.status,400);
+});

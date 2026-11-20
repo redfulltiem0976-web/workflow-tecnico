@@ -1,0 +1,13 @@
+{
+  "name": "01-ordenes-mantenimiento-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Prototipo educativo - WorkFlow Técnico",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
